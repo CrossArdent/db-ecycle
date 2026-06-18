@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Warehouse Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <a class="brand" href="{{ url_for('main.index') }}">Warehouse Orders</a>
+        {% if current_user %}
+        <nav>
+            {% if current_user.role != 'Warehouse Display' %}
+            <a href="{{ url_for('main.active_jobs') }}">Active Jobs</a>
+            <a href="{{ url_for('main.completed_jobs') }}">Completed</a>
+            <a href="{{ url_for('main.new_job') }}">Add Job</a>
+            {% endif %}
+            <a href="{{ url_for('main.tv') }}">TV Display</a>
+            {% if current_user.role == 'Admin' %}
+            <a href="{{ url_for('main.audit_log') }}">Audit Log</a>
+            {% endif %}
+            <span class="user-pill">{{ current_user.username }} · {{ current_user.role }}</span>
+            <a href="{{ url_for('main.logout') }}">Logout</a>
+        </nav>
+        {% endif %}
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-stack">
+                {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
