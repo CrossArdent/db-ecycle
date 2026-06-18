@@ -19,10 +19,10 @@ RELEASE_STATUSES = {RELEASED, ON_HOLD}
 JOB_STATUSES = {ACTIVE, COMPLETED}
 
 DEFAULT_USERS = [
-    ("admin", "change-me-admin", ROLE_ADMIN),
-    ("account", "change-me-account", ROLE_ACCOUNT),
-    ("warehouse", "change-me-warehouse", ROLE_WAREHOUSE),
-    ("display", "change-me-display", ROLE_DISPLAY),
+    ("admin", "P@55w0rd", ROLE_ADMIN),
+    ("account", "Brett", ROLE_ACCOUNT),
+    ("warehouse", "Scott", ROLE_WAREHOUSE),
+    ("display", "display", ROLE_DISPLAY),
 ]
 
 
