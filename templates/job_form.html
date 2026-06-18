@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Add Job · Warehouse Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">
+    <div>
+        <h1>Add Job</h1>
+        <p>Manual entry from the CycleLution order number.</p>
+    </div>
+</div>
+
+<form method="post" class="stacked-form wide">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>
+        Order Number
+        <input name="order_number" value="{{ data.order_number }}" required>
+    </label>
+    <label>
+        Customer Name
+        <input name="customer_name" value="{{ data.customer_name }}" required>
+    </label>
+    <label>
+        Date Received
+        <input name="date_received" type="date" value="{{ data.date_received }}" required>
+    </label>
+    <label>
+        Release Status
+        <select name="release_status">
+            <option value="Released" {% if data.release_status == 'Released' %}selected{% endif %}>Released</option>
+            <option value="On Hold" {% if data.release_status == 'On Hold' %}selected{% endif %}>On Hold</option>
+        </select>
+    </label>
+    <label>
+        Notes
+        <textarea name="notes" rows="5">{{ data.notes }}</textarea>
+    </label>
+    <div class="form-actions">
+        <button type="submit">Create Job</button>
+        <a class="button muted" href="{{ url_for('main.active_jobs') }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

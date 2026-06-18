@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="45">
+    <title>Warehouse TV Display</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='tv.css') }}">
+</head>
+<body>
+    <header class="tv-header">
+        <div>
+            <h1>Warehouse Orders</h1>
+            <p>Auto-refreshes every 45 seconds</p>
+        </div>
+        <div class="clock">{{ now }}</div>
+    </header>
+
+    <main class="tv-grid">
+        <section class="tv-section ready-section">
+            <h2>READY TO PROCESS</h2>
+            {% for job in released %}
+            <article class="tv-job ready">
+                <strong>#{{ job.order_number }}</strong>
+                <span>{{ job.customer_name }}</span>
+                <small>Received {{ job.date_received }}</small>
+            </article>
+            {% else %}
+            <p class="empty">No released active jobs.</p>
+            {% endfor %}
+        </section>
+
+        <section class="tv-section hold-section">
+            <h2>ON HOLD - DO NOT PROCESS</h2>
+            {% for job in held %}
+            <article class="tv-job hold">
+                <strong>#{{ job.order_number }}</strong>
+                <span>{{ job.customer_name }}</span>
+                <small>Received {{ job.date_received }}</small>
+            </article>
+            {% else %}
+            <p class="empty">No active held jobs.</p>
+            {% endfor %}
+        </section>
+
+        <section class="tv-section complete-section">
+            <h2>COMPLETED LAST 7 DAYS</h2>
+            {% for job in completed %}
+            <article class="tv-job complete">
+                <strong>#{{ job.order_number }}</strong>
+                <span>{{ job.customer_name }}</span>
+                <small>{{ job.completed_at|short_dt }} by {{ job.completed_by }}</small>
+            </article>
+            {% else %}
+            <p class="empty">No recent completions.</p>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>

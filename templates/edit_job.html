@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ job.order_number }} · Warehouse Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">
+    <div>
+        <h1>Order #{{ job.order_number }}</h1>
+        <p>{{ job.customer_name }} · Received {{ job.date_received }}</p>
+    </div>
+    <div class="status-pair">
+        <span class="badge {{ 'ready' if job.release_status == 'Released' else 'hold' }}">{{ job.release_status }}</span>
+        <span class="badge neutral">{{ job.job_status }}</span>
+    </div>
+</div>
+
+<section class="detail-grid">
+    <div>
+        <h2>Job Details</h2>
+        <form method="post" class="stacked-form wide">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+                Order Number
+                <input name="order_number" value="{{ job.order_number }}" {% if 'order_number' not in fields %}disabled{% endif %} required>
+            </label>
+            <label>
+                Customer Name
+                <input name="customer_name" value="{{ job.customer_name }}" {% if 'customer_name' not in fields %}disabled{% endif %} required>
+            </label>
+            <label>
+                Date Received
+                <input name="date_received" type="date" value="{{ job.date_received }}" {% if 'date_received' not in fields %}disabled{% endif %} required>
+            </label>
+            {% if 'release_status' in fields %}
+            <label>
+                Release Status
+                <select name="release_status">
+                    <option value="Released" {% if job.release_status == 'Released' %}selected{% endif %}>Released</option>
+                    <option value="On Hold" {% if job.release_status == 'On Hold' %}selected{% endif %}>On Hold</option>
+                </select>
+            </label>
+            {% endif %}
+            {% if 'job_status' in fields %}
+            <label>
+                Job Status
+                <select name="job_status">
+                    <option value="Active" {% if job.job_status == 'Active' %}selected{% endif %}>Active</option>
+                    <option value="Completed" {% if job.job_status == 'Completed' %}selected{% endif %}>Completed</option>
+                </select>
+            </label>
+            {% endif %}
+            <label>
+                Notes
+                <textarea name="notes" rows="6" {% if 'notes' not in fields %}disabled{% endif %}>{{ job.notes }}</textarea>
+            </label>
+            <div class="form-actions">
+                <button type="submit">Save Changes</button>
+                <a class="button muted" href="{{ url_for('main.active_jobs') }}">Back</a>
+            </div>
+        </form>
+    </div>
+    <aside class="facts">
+        <h2>Actions</h2>
+        {% include "_job_actions.html" %}
+        <dl>
+            <dt>Created</dt>
+            <dd>{{ job.created_at|short_dt }} by {{ job.created_by }}</dd>
+            <dt>Last Updated</dt>
+            <dd>{{ job.updated_at|short_dt }} by {{ job.updated_by }}</dd>
+            <dt>Released</dt>
+            <dd>{{ job.released_at|short_dt or 'Not recorded' }}{% if job.released_by %} by {{ job.released_by }}{% endif %}</dd>
+            <dt>Completed</dt>
+            <dd>{{ job.completed_at|short_dt or 'Not completed' }}{% if job.completed_by %} by {{ job.completed_by }}{% endif %}</dd>
+        </dl>
+    </aside>
+</section>
+{% endblock %}
