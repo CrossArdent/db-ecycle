@@ -24,6 +24,9 @@ def create_app(test_config=None):
     app.teardown_appcontext(close_db)
     app.register_blueprint(bp)
 
+    with app.app_context():
+        init_db()
+
     @app.context_processor
     def inject_globals():
         return {

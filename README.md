@@ -94,6 +94,46 @@ Do not store real SMTP passwords in source control.
 - Warehouse Manager: create jobs, edit notes, hold, complete jobs, view jobs. Warehouse Managers are blocked server-side from releasing held jobs.
 - Warehouse Display: read-only TV dashboard access only.
 
+## Needs Attention
+
+Use `http://127.0.0.1:5000/needs-attention` for the internal Needs Attention page. It is visible to Admin, Account Manager, and Warehouse Manager users. Warehouse Display users cannot access it.
+
+Needs Attention is calculated from active jobs and can show multiple reasons on one job:
+
+- `Waiting for Release`
+- `Resale Numbers Needed`
+- `Released, Not Completed`
+- `Active Over 5 Days`
+- `Resale Request Over 3 Days`
+- `Long Hold`
+
+The warehouse TV page remains focused on physical warehouse action and does not show resale-specific queues.
+
+## Aging Indicators
+
+Internal pages show calculated aging indicators:
+
+- Days Open
+- Days On Hold
+- Days Since Released
+- Days Since Resale Requested
+
+Aging badges use these levels:
+
+- Normal
+- Warning
+- Urgent
+
+The TV display stays uncluttered and only shows Days Open for released active jobs and Days On Hold for held jobs.
+
+## Status Badges
+
+Release, job, resale, attention, and aging statuses are shown with text badges. Color is used as a visual aid, but the badge text remains visible for accessibility.
+
+## Confirmation Prompts
+
+Important workflow actions use browser confirmation prompts, including release, hold, complete, reopen, resale status changes, and delete. Permissions are still enforced server-side.
+
 ## Resale Numbers Workflow
 
 Resale Status is separate from Release Status. Release Status still controls whether the warehouse may process an order. Resale Status only tracks whether resale numbers are needed.
@@ -121,6 +161,18 @@ instance/warehouse_dashboard.sqlite3
 ```
 
 Override it with `DATABASE_PATH` in `.env`.
+
+To apply safe schema updates after pulling or copying a new version, run:
+
+```powershell
+python scripts/migrate_db.py
+```
+
+For Docker-based deployments, use:
+
+```powershell
+docker compose exec warehouse-dashboard python scripts/migrate_db.py
+```
 
 Back up the database by stopping the app briefly or ensuring no writes are happening, then copying the SQLite file:
 

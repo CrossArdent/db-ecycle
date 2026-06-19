@@ -15,8 +15,10 @@
                 <th>Order #</th>
                 <th>Customer</th>
                 <th>Date Received</th>
+                <th>Days Open</th>
                 <th>Date Completed</th>
                 <th>Completed By</th>
+                <th>Job Status</th>
                 <th>Resale Status</th>
                 <th>Notes</th>
                 <th>Actions</th>
@@ -28,14 +30,17 @@
                 <td><a href="{{ url_for('main.edit_job', job_id=job.id) }}">{{ job.order_number }}</a></td>
                 <td>{{ job.customer_name }}</td>
                 <td>{{ job.date_received }}</td>
+                {% set open_days = job|days_open %}
+                <td><span class="badge badge-{{ open_days|aging_level('days_open') }}">{{ open_days }} days</span></td>
                 <td>{{ job.completed_at|short_dt }}</td>
                 <td>{{ job.completed_by }}</td>
-                <td><span class="badge resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span></td>
+                <td><span class="badge badge-completed">{{ job.job_status }}</span></td>
+                <td><span class="badge badge-resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span></td>
                 <td class="notes">{{ job.notes }}</td>
                 <td>{% include "_job_actions.html" %}</td>
             </tr>
             {% else %}
-            <tr><td colspan="8" class="empty">No completed jobs yet.</td></tr>
+            <tr><td colspan="10" class="empty">No completed jobs yet.</td></tr>
             {% endfor %}
         </tbody>
     </table>

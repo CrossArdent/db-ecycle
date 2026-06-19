@@ -23,7 +23,7 @@
             <article class="tv-job ready">
                 <strong>#{{ job.order_number }}</strong>
                 <span>{{ job.customer_name }}</span>
-                <small>Received {{ job.date_received }}</small>
+                <small>Received {{ job.date_received }} · {{ job|days_open }} days open</small>
             </article>
             {% else %}
             <p class="empty">No released active jobs.</p>
@@ -36,7 +36,7 @@
             <article class="tv-job hold">
                 <strong>#{{ job.order_number }}</strong>
                 <span>{{ job.customer_name }}</span>
-                <small>Received {{ job.date_received }}</small>
+                <small>Received {{ job.date_received }} · {{ job|days_on_hold }} days on hold</small>
             </article>
             {% else %}
             <p class="empty">No active held jobs.</p>

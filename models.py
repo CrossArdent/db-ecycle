@@ -83,6 +83,8 @@ def init_db():
             released_by TEXT,
             completed_at TEXT,
             completed_by TEXT,
+            hold_started_at TEXT,
+            hold_started_by TEXT,
             resale_requested_at TEXT,
             resale_requested_by TEXT,
             resale_provided_at TEXT,
@@ -114,6 +116,8 @@ def ensure_job_schema(db):
     columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)").fetchall()}
     schema_updates = {
         "resale_status": "ALTER TABLE jobs ADD COLUMN resale_status TEXT NOT NULL DEFAULT 'Not Needed'",
+        "hold_started_at": "ALTER TABLE jobs ADD COLUMN hold_started_at TEXT",
+        "hold_started_by": "ALTER TABLE jobs ADD COLUMN hold_started_by TEXT",
         "resale_requested_at": "ALTER TABLE jobs ADD COLUMN resale_requested_at TEXT",
         "resale_requested_by": "ALTER TABLE jobs ADD COLUMN resale_requested_by TEXT",
         "resale_provided_at": "ALTER TABLE jobs ADD COLUMN resale_provided_at TEXT",
@@ -260,6 +264,17 @@ def get_completed_jobs():
     ).fetchall()
 
 
+def get_attention_candidate_jobs():
+    return get_db().execute(
+        """
+        SELECT * FROM jobs
+        WHERE job_status = ?
+        ORDER BY date_received ASC, updated_at DESC
+        """,
+        (ACTIVE,),
+    ).fetchall()
+
+
 def get_resale_needed_jobs():
     return get_db().execute(
         """
@@ -366,35 +381,72 @@ def change_release_status(job, new_status, username):
     released_by = username if new_status == RELEASED else job["released_by"]
     completes_on_release = job["release_status"] == ON_HOLD and new_status == RELEASED
     reopens_on_hold = job["job_status"] == COMPLETED and new_status == ON_HOLD
+    starts_hold = job["release_status"] != ON_HOLD and new_status == ON_HOLD
+    hold_started_at = now if starts_hold else job["hold_started_at"]
+    hold_started_by = username if starts_hold else job["hold_started_by"]
     db = get_db()
     if completes_on_release:
         db.execute(
             """
             UPDATE jobs
             SET release_status = ?, job_status = ?, updated_at = ?, updated_by = ?,
-                released_at = ?, released_by = ?, completed_at = ?, completed_by = ?
+                released_at = ?, released_by = ?, completed_at = ?, completed_by = ?,
+                hold_started_at = ?, hold_started_by = ?
             WHERE id = ?
             """,
-            (new_status, COMPLETED, now, username, released_at, released_by, now, username, job["id"]),
+            (
+                new_status,
+                COMPLETED,
+                now,
+                username,
+                released_at,
+                released_by,
+                now,
+                username,
+                hold_started_at,
+                hold_started_by,
+                job["id"],
+            ),
         )
     elif reopens_on_hold:
         db.execute(
             """
             UPDATE jobs
             SET release_status = ?, job_status = ?, completed_at = NULL, completed_by = NULL,
-                updated_at = ?, updated_by = ?, released_at = ?, released_by = ?
+                updated_at = ?, updated_by = ?, released_at = ?, released_by = ?,
+                hold_started_at = ?, hold_started_by = ?
             WHERE id = ?
             """,
-            (new_status, ACTIVE, now, username, released_at, released_by, job["id"]),
+            (
+                new_status,
+                ACTIVE,
+                now,
+                username,
+                released_at,
+                released_by,
+                hold_started_at,
+                hold_started_by,
+                job["id"],
+            ),
         )
     else:
         db.execute(
             """
             UPDATE jobs
-            SET release_status = ?, updated_at = ?, updated_by = ?, released_at = ?, released_by = ?
+            SET release_status = ?, updated_at = ?, updated_by = ?, released_at = ?, released_by = ?,
+                hold_started_at = ?, hold_started_by = ?
             WHERE id = ?
             """,
-            (new_status, now, username, released_at, released_by, job["id"]),
+            (
+                new_status,
+                now,
+                username,
+                released_at,
+                released_by,
+                hold_started_at,
+                hold_started_by,
+                job["id"],
+            ),
         )
     audit(
         job["id"],

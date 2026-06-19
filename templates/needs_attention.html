@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Needs Attention · Warehouse Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">
+    <div>
+        <h1>Needs Attention</h1>
+        <p>Active jobs with holds, resale requests, or aging warnings.</p>
+    </div>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Order Number</th>
+                <th>Customer Name</th>
+                <th>Date Received</th>
+                <th>Release Status</th>
+                <th>Job Status</th>
+                <th>Resale Status</th>
+                <th>Attention Reasons</th>
+                <th>Days Open</th>
+                <th>Days On Hold</th>
+                <th>Days Since Released</th>
+                <th>Days Since Resale Requested</th>
+                <th>Suggested Owner</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set job = row.job %}
+            {% set open_days = job|days_open %}
+            {% set hold_days = job|days_on_hold %}
+            {% set released_days = job|days_since_released %}
+            {% set resale_days = job|days_since_resale_requested %}
+            <tr>
+                <td><a href="{{ url_for('main.edit_job', job_id=job.id) }}">{{ job.order_number }}</a></td>
+                <td>{{ job.customer_name }}</td>
+                <td>{{ job.date_received }}</td>
+                <td><span class="badge badge-{{ 'released' if job.release_status == 'Released' else 'on-hold' }}">{{ job.release_status }}</span></td>
+                <td><span class="badge badge-{{ 'active' if job.job_status == 'Active' else 'completed' }}">{{ job.job_status }}</span></td>
+                <td><span class="badge badge-resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span></td>
+                <td class="badge-list">
+                    {% for reason in row.reasons %}
+                    <span class="badge badge-{{ reason.level }}">{{ reason.label }}</span>
+                    {% endfor %}
+                </td>
+                <td><span class="badge badge-{{ open_days|aging_level('days_open') }}">{{ open_days }} days</span></td>
+                <td>{% if hold_days is not none %}<span class="badge badge-{{ hold_days|aging_level('days_on_hold') }}">{{ hold_days }} days</span>{% endif %}</td>
+                <td>{% if released_days is not none %}<span class="badge badge-{{ released_days|aging_level('days_since_released') }}">{{ released_days }} days</span>{% endif %}</td>
+                <td>{% if resale_days is not none %}<span class="badge badge-{{ resale_days|aging_level('days_since_resale_requested') }}">{{ resale_days }} days</span>{% endif %}</td>
+                <td>{{ row.owners|join(', ') }}</td>
+                <td>{{ job.updated_at|short_dt }}</td>
+                <td>{% include "_job_actions.html" %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="14" class="empty">No active jobs need attention.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

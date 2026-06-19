@@ -7,9 +7,9 @@
         <p>{{ job.customer_name }} · Received {{ job.date_received }}</p>
     </div>
     <div class="status-pair">
-        <span class="badge {{ 'ready' if job.release_status == 'Released' else 'hold' }}">{{ job.release_status }}</span>
-        <span class="badge neutral">{{ job.job_status }}</span>
-        <span class="badge resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span>
+        <span class="badge badge-{{ 'released' if job.release_status == 'Released' else 'on-hold' }}">{{ job.release_status }}</span>
+        <span class="badge badge-{{ 'active' if job.job_status == 'Active' else 'completed' }}">{{ job.job_status }}</span>
+        <span class="badge badge-resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span>
     </div>
 </div>
 

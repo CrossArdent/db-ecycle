@@ -3,6 +3,16 @@ from datetime import date, datetime, timezone
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
+from helpers import (
+    calculate_days_on_hold,
+    calculate_days_open,
+    calculate_days_since_released,
+    calculate_days_since_resale_requested,
+    get_aging_level,
+    get_attention_reasons,
+    get_suggested_owners,
+    job_needs_attention,
+)
 from auth import (
     admin_required,
     can_complete_job,
@@ -36,6 +46,7 @@ from models import (
     delete_job,
     get_active_jobs,
     get_audit_entries,
+    get_attention_candidate_jobs,
     get_completed_jobs,
     get_job,
     get_resale_needed_jobs,
@@ -61,7 +72,27 @@ def days_open(job):
 
 @bp.app_template_filter("days_open")
 def days_open_filter(job):
-    return days_open(job)
+    return calculate_days_open(job)
+
+
+@bp.app_template_filter("days_on_hold")
+def days_on_hold_filter(job):
+    return calculate_days_on_hold(job)
+
+
+@bp.app_template_filter("days_since_released")
+def days_since_released_filter(job):
+    return calculate_days_since_released(job)
+
+
+@bp.app_template_filter("days_since_resale_requested")
+def days_since_resale_requested_filter(job):
+    return calculate_days_since_resale_requested(job)
+
+
+@bp.app_template_filter("aging_level")
+def aging_level_filter(days, aging_type):
+    return get_aging_level(days, aging_type)
 
 
 @bp.app_template_filter("short_dt")
@@ -137,6 +168,26 @@ def completed_jobs():
     if user["role"] == "Warehouse Display":
         return redirect(url_for("main.tv"))
     return render_template("completed_jobs.html", jobs=get_completed_jobs())
+
+
+@bp.route("/needs-attention")
+@login_required
+def needs_attention():
+    user = current_user()
+    if user["role"] == "Warehouse Display":
+        abort(403)
+    rows = []
+    for job in get_attention_candidate_jobs():
+        reasons = get_attention_reasons(job)
+        if reasons:
+            rows.append(
+                {
+                    "job": job,
+                    "reasons": reasons,
+                    "owners": get_suggested_owners(reasons),
+                }
+            )
+    return render_template("needs_attention.html", rows=rows)
 
 
 @bp.route("/resale-needed")
