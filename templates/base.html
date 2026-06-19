@@ -11,23 +11,30 @@
     <header class="site-header">
         <a class="brand" href="{{ url_for('main.index') }}">Warehouse Orders</a>
         {% if current_user %}
-        <nav>
-            {% if current_user.role != 'Warehouse Display' %}
-            <a href="{{ url_for('main.active_jobs') }}">Active Jobs</a>
-            <a href="{{ url_for('main.completed_jobs') }}">Completed</a>
-            <a href="{{ url_for('main.needs_attention') }}">Needs Attention</a>
-            <a href="{{ url_for('main.resale_needed') }}">Needs Resale Numbers</a>
-            <a href="{{ url_for('main.new_job') }}">Add Job</a>
-            {% endif %}
-            <a href="{{ url_for('main.tv') }}">TV Display</a>
-            {% if current_user.role == 'Admin' %}
-            <a href="{{ url_for('main.audit_log') }}">Audit Log</a>
-            {% endif %}
-            <span class="user-pill">{{ current_user.username }} · {{ current_user.role }}</span>
-            <a href="{{ url_for('main.logout') }}">Logout</a>
-        </nav>
+        <div class="header-account">
+            <span class="user-pill">{{ current_user.username }} - {{ current_user.role }}</span>
+            <a class="logout-link" href="{{ url_for('main.logout') }}">Logout</a>
+        </div>
         {% endif %}
     </header>
+
+    {% if current_user %}
+    <nav class="main-nav-bar" aria-label="Primary navigation">
+        <div class="main-nav-inner">
+            {% if current_user.role != 'Warehouse Display' %}
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.active_jobs' else '' }}" href="{{ url_for('main.active_jobs') }}">Active Jobs</a>
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.completed_jobs' else '' }}" href="{{ url_for('main.completed_jobs') }}">Completed</a>
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.needs_attention' else '' }}" href="{{ url_for('main.needs_attention') }}">Needs Attention</a>
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.resale_needed' else '' }}" href="{{ url_for('main.resale_needed') }}">Needs Resale Numbers</a>
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.new_job' else '' }}" href="{{ url_for('main.new_job') }}">Add Job</a>
+            {% endif %}
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.tv' else '' }}" href="{{ url_for('main.tv') }}">TV Display</a>
+            {% if current_user.role == 'Admin' %}
+            <a class="nav-button {{ 'active' if request.endpoint == 'main.audit_log' else '' }}" href="{{ url_for('main.audit_log') }}">Audit Log</a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
 
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}

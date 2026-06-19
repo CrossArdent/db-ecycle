@@ -45,16 +45,17 @@ a {
     white-space: nowrap;
 }
 
-nav {
+.header-account {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 12px;
 }
 
-nav a {
+.logout-link {
     color: #eaf2ff;
     text-decoration: none;
+    font-weight: 700;
 }
 
 .user-pill {
@@ -62,6 +63,41 @@ nav a {
     border: 1px solid rgba(255,255,255,.28);
     border-radius: 999px;
     color: #eaf2ff;
+}
+
+.main-nav-bar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+}
+
+.main-nav-inner {
+    width: min(1800px, calc(100vw - 16px));
+    margin: 0 auto;
+    padding: 10px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #bcc8d7;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #1f3b5c;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.nav-button:hover,
+.nav-button.active {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: #fff;
 }
 
 .container {
@@ -374,9 +410,20 @@ dd {
         display: block;
     }
 
-    nav,
     .page-title > * + * {
         margin-top: 12px;
+    }
+
+    .header-account {
+        margin-top: 10px;
+    }
+
+    .main-nav-inner {
+        padding: 8px 0;
+    }
+
+    .nav-button {
+        flex: 1 1 180px;
     }
 
     .filters {
