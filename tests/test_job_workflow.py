@@ -1,11 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
-from models import create_job, get_db, get_job, init_db, mark_completed
+from models import DEFAULT_USERS, create_job, get_db, get_job, init_db, mark_completed
 from tests.conftest import create_job_via_form, login
 
 
+PASSWORDS = {username: password for username, password, role in DEFAULT_USERS}
+
+
 def test_display_role_cannot_create_or_edit(client):
-    login(client, "display", "change-me-display")
+    login(client, "display", PASSWORDS["display"])
 
     response = client.get("/jobs/new")
     assert response.status_code == 403
@@ -65,7 +68,7 @@ def test_tv_shows_active_jobs_and_only_recent_completed_jobs(app, client):
         )
         get_db().commit()
 
-    login(client, "display", "change-me-display")
+    login(client, "display", PASSWORDS["display"])
     response = client.get("/tv")
     assert b"CL-TV-READY" in response.data
     assert b"CL-TV-HOLD" in response.data
@@ -73,14 +76,14 @@ def test_tv_shows_active_jobs_and_only_recent_completed_jobs(app, client):
     assert b"CL-TV-OLD" not in response.data
 
     client.get("/logout")
-    login(client, "admin", "change-me-admin")
+    login(client, "admin", PASSWORDS["admin"])
     response = client.get("/completed")
     assert b"CL-TV-RECENT" in response.data
     assert b"CL-TV-OLD" in response.data
 
 
 def test_status_changes_create_audit_entries(app, client):
-    login(client, "account", "change-me-account")
+    login(client, "account", PASSWORDS["account"])
     create_job_via_form(client, "CL-AUDIT-1", release_status="On Hold")
 
     with app.app_context():

@@ -41,6 +41,7 @@
                 <th>Release Status</th>
                 <th>Job Status</th>
                 <th>Last Updated</th>
+                <th>Resale Status</th>
                 <th>Notes</th>
                 <th>Actions</th>
             </tr>
@@ -55,11 +56,12 @@
                 <td><span class="badge {{ 'ready' if job.release_status == 'Released' else 'hold' }}">{{ job.release_status }}</span></td>
                 <td><span class="badge neutral">{{ job.job_status }}</span></td>
                 <td>{{ job.updated_at|short_dt }}</td>
+                <td><span class="badge resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span></td>
                 <td class="notes">{{ job.notes }}</td>
                 <td>{% include "_job_actions.html" %}</td>
             </tr>
             {% else %}
-            <tr><td colspan="9" class="empty">No active jobs found.</td></tr>
+            <tr><td colspan="10" class="empty">No active jobs found.</td></tr>
             {% endfor %}
         </tbody>
     </table>

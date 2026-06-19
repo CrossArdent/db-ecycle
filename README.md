@@ -35,10 +35,10 @@ python scripts/seed_sample_jobs.py
 
 Default local test users are defined in `scripts/seed_users.py` and `models.py`:
 
-- `admin / change-me-admin`
-- `account / change-me-account`
-- `warehouse / change-me-warehouse`
-- `display / change-me-display`
+- `admin / P@55w0rd`
+- `account / Brett`
+- `warehouse / Scott`
+- `display / display`
 
 To change users or passwords, edit the default list in `models.py` or `scripts/seed_users.py`, then rerun:
 
@@ -93,6 +93,20 @@ Do not store real SMTP passwords in source control.
 - Account Manager: create jobs, edit basic job info, hold, release, view jobs.
 - Warehouse Manager: create jobs, edit notes, hold, complete jobs, view jobs. Warehouse Managers are blocked server-side from releasing held jobs.
 - Warehouse Display: read-only TV dashboard access only.
+
+## Resale Numbers Workflow
+
+Resale Status is separate from Release Status. Release Status still controls whether the warehouse may process an order. Resale Status only tracks whether resale numbers are needed.
+
+Resale Status values:
+
+- `Not Needed`
+- `Requested`
+- `Provided`
+
+New jobs default to `Not Needed`. Account Managers and Warehouse Managers can request resale numbers. Account Managers can cancel a request, Warehouse Managers can mark numbers provided, and Admins can do all resale actions including reopening a provided request.
+
+Use `http://127.0.0.1:5000/resale-needed` for the Needs Resale Numbers queue. The warehouse TV page does not show resale request details in version 1.
 
 ## Current Release Workflow
 

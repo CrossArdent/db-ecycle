@@ -9,6 +9,7 @@
     <div class="status-pair">
         <span class="badge {{ 'ready' if job.release_status == 'Released' else 'hold' }}">{{ job.release_status }}</span>
         <span class="badge neutral">{{ job.job_status }}</span>
+        <span class="badge resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span>
     </div>
 </div>
 
@@ -69,6 +70,10 @@
             <dd>{{ job.released_at|short_dt or 'Not recorded' }}{% if job.released_by %} by {{ job.released_by }}{% endif %}</dd>
             <dt>Completed</dt>
             <dd>{{ job.completed_at|short_dt or 'Not completed' }}{% if job.completed_by %} by {{ job.completed_by }}{% endif %}</dd>
+            <dt>Resale Requested</dt>
+            <dd>{{ job.resale_requested_at|short_dt or 'Not requested' }}{% if job.resale_requested_by %} by {{ job.resale_requested_by }}{% endif %}</dd>
+            <dt>Resale Provided</dt>
+            <dd>{{ job.resale_provided_at|short_dt or 'Not provided' }}{% if job.resale_provided_by %} by {{ job.resale_provided_by }}{% endif %}</dd>
         </dl>
     </aside>
 </section>

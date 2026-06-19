@@ -98,6 +98,22 @@ def can_delete_job(user):
     return user and user["role"] == ROLE_ADMIN
 
 
+def can_request_resale(user):
+    return user and user["role"] in {"Admin", "Account Manager", "Warehouse Manager"}
+
+
+def can_cancel_resale(user):
+    return user and user["role"] in {"Admin", "Account Manager"}
+
+
+def can_provide_resale(user):
+    return user and user["role"] in {"Admin", "Warehouse Manager"}
+
+
+def can_reopen_resale(user):
+    return user and user["role"] == ROLE_ADMIN
+
+
 def editable_fields_for(user):
     if not user:
         return []

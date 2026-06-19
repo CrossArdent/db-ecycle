@@ -15,6 +15,7 @@
             {% if current_user.role != 'Warehouse Display' %}
             <a href="{{ url_for('main.active_jobs') }}">Active Jobs</a>
             <a href="{{ url_for('main.completed_jobs') }}">Completed</a>
+            <a href="{{ url_for('main.resale_needed') }}">Needs Resale Numbers</a>
             <a href="{{ url_for('main.new_job') }}">Add Job</a>
             {% endif %}
             <a href="{{ url_for('main.tv') }}">TV Display</a>

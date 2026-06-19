@@ -272,6 +272,21 @@ tr:last-child td {
     color: var(--neutral-text);
 }
 
+.badge.resale-not-needed {
+    background: #eef2f6;
+    color: #475467;
+}
+
+.badge.resale-requested {
+    background: #fff3c4;
+    color: #8a5a00;
+}
+
+.badge.resale-provided {
+    background: #e0f2fe;
+    color: #075985;
+}
+
 .flash-stack {
     display: grid;
     gap: 8px;

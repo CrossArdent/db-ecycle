@@ -38,4 +38,36 @@
         <button class="small danger" type="submit">Delete</button>
     </form>
     {% endif %}
+
+    {% if current_user.role in ['Admin', 'Account Manager', 'Warehouse Manager'] and job.resale_status == 'Not Needed' %}
+    <form method="post" action="{{ url_for('main.job_action', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="request_resale">
+        <button class="small secondary" type="submit">Request Resale Numbers</button>
+    </form>
+    {% endif %}
+
+    {% if current_user.role in ['Admin', 'Account Manager'] and job.resale_status == 'Requested' %}
+    <form method="post" action="{{ url_for('main.job_action', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="cancel_resale">
+        <button class="small secondary" type="submit">Cancel Resale Request</button>
+    </form>
+    {% endif %}
+
+    {% if current_user.role in ['Admin', 'Warehouse Manager'] and job.resale_status == 'Requested' %}
+    <form method="post" action="{{ url_for('main.job_action', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="provide_resale">
+        <button class="small" type="submit">Mark Resale Numbers Provided</button>
+    </form>
+    {% endif %}
+
+    {% if current_user.role == 'Admin' and job.resale_status == 'Provided' %}
+    <form method="post" action="{{ url_for('main.job_action', job_id=job.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reopen_resale">
+        <button class="small secondary" type="submit">Reopen Resale Request</button>
+    </form>
+    {% endif %}
 </div>

@@ -14,9 +14,13 @@ RELEASED = "Released"
 ON_HOLD = "On Hold"
 ACTIVE = "Active"
 COMPLETED = "Completed"
+RESALE_NOT_NEEDED = "Not Needed"
+RESALE_REQUESTED = "Requested"
+RESALE_PROVIDED = "Provided"
 
 RELEASE_STATUSES = {RELEASED, ON_HOLD}
 JOB_STATUSES = {ACTIVE, COMPLETED}
+RESALE_STATUSES = {RESALE_NOT_NEEDED, RESALE_REQUESTED, RESALE_PROVIDED}
 
 DEFAULT_USERS = [
     ("admin", "P@55w0rd", ROLE_ADMIN),
@@ -69,6 +73,7 @@ def init_db():
             date_received TEXT NOT NULL,
             release_status TEXT NOT NULL,
             job_status TEXT NOT NULL,
+            resale_status TEXT NOT NULL DEFAULT 'Not Needed',
             notes TEXT,
             created_at TEXT NOT NULL,
             created_by TEXT NOT NULL,
@@ -78,8 +83,13 @@ def init_db():
             released_by TEXT,
             completed_at TEXT,
             completed_by TEXT,
+            resale_requested_at TEXT,
+            resale_requested_by TEXT,
+            resale_provided_at TEXT,
+            resale_provided_by TEXT,
             CHECK (release_status IN ('Released', 'On Hold')),
-            CHECK (job_status IN ('Active', 'Completed'))
+            CHECK (job_status IN ('Active', 'Completed')),
+            CHECK (resale_status IN ('Not Needed', 'Requested', 'Provided'))
         );
 
         CREATE TABLE IF NOT EXISTS audit_log (
@@ -96,7 +106,22 @@ def init_db():
         );
         """
     )
+    ensure_job_schema(db)
     db.commit()
+
+
+def ensure_job_schema(db):
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)").fetchall()}
+    schema_updates = {
+        "resale_status": "ALTER TABLE jobs ADD COLUMN resale_status TEXT NOT NULL DEFAULT 'Not Needed'",
+        "resale_requested_at": "ALTER TABLE jobs ADD COLUMN resale_requested_at TEXT",
+        "resale_requested_by": "ALTER TABLE jobs ADD COLUMN resale_requested_by TEXT",
+        "resale_provided_at": "ALTER TABLE jobs ADD COLUMN resale_provided_at TEXT",
+        "resale_provided_by": "ALTER TABLE jobs ADD COLUMN resale_provided_by TEXT",
+    }
+    for column, statement in schema_updates.items():
+        if column not in columns:
+            db.execute(statement)
 
 
 def create_user(username, password, role):
@@ -166,16 +191,19 @@ def create_job(data, username):
     release_status = data.get("release_status") or RELEASED
     if release_status not in RELEASE_STATUSES:
         raise ValueError("Invalid release status")
+    resale_status = data.get("resale_status") or RESALE_NOT_NEEDED
+    if resale_status not in RESALE_STATUSES:
+        raise ValueError("Invalid resale status")
 
     now = utcnow()
     db = get_db()
     cursor = db.execute(
         """
         INSERT INTO jobs (
-            order_number, customer_name, date_received, release_status, job_status, notes,
+            order_number, customer_name, date_received, release_status, job_status, resale_status, notes,
             created_at, created_by, updated_at, updated_by
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data["order_number"].strip(),
@@ -183,6 +211,7 @@ def create_job(data, username):
             data["date_received"],
             release_status,
             ACTIVE,
+            resale_status,
             data.get("notes", "").strip(),
             now,
             username,
@@ -228,6 +257,17 @@ def get_completed_jobs():
         ORDER BY completed_at DESC, date_received DESC
         """,
         (COMPLETED,),
+    ).fetchall()
+
+
+def get_resale_needed_jobs():
+    return get_db().execute(
+        """
+        SELECT * FROM jobs
+        WHERE job_status = ? AND resale_status = ?
+        ORDER BY resale_requested_at ASC, date_received ASC
+        """,
+        (ACTIVE, RESALE_REQUESTED),
     ).fetchall()
 
 
@@ -288,6 +328,8 @@ def update_job_fields(job, data, username, allowed_fields):
         raise ValueError("Invalid release status")
     if "job_status" in updates and updates["job_status"] not in JOB_STATUSES:
         raise ValueError("Invalid job status")
+    if "resale_status" in updates and updates["resale_status"] not in RESALE_STATUSES:
+        raise ValueError("Invalid resale status")
 
     now = utcnow()
     assignments = [f"{field} = ?" for field in updates]
@@ -323,6 +365,7 @@ def change_release_status(job, new_status, username):
     released_at = now if new_status == RELEASED else job["released_at"]
     released_by = username if new_status == RELEASED else job["released_by"]
     completes_on_release = job["release_status"] == ON_HOLD and new_status == RELEASED
+    reopens_on_hold = job["job_status"] == COMPLETED and new_status == ON_HOLD
     db = get_db()
     if completes_on_release:
         db.execute(
@@ -333,6 +376,16 @@ def change_release_status(job, new_status, username):
             WHERE id = ?
             """,
             (new_status, COMPLETED, now, username, released_at, released_by, now, username, job["id"]),
+        )
+    elif reopens_on_hold:
+        db.execute(
+            """
+            UPDATE jobs
+            SET release_status = ?, job_status = ?, completed_at = NULL, completed_by = NULL,
+                updated_at = ?, updated_by = ?, released_at = ?, released_by = ?
+            WHERE id = ?
+            """,
+            (new_status, ACTIVE, now, username, released_at, released_by, job["id"]),
         )
     else:
         db.execute(
@@ -361,6 +414,16 @@ def change_release_status(job, new_status, username):
             job["job_status"],
             COMPLETED,
             "Job completed automatically when released from On Hold",
+        )
+    if reopens_on_hold:
+        audit(
+            job["id"],
+            job["order_number"],
+            username,
+            "job_status",
+            job["job_status"],
+            ACTIVE,
+            "Job reopened automatically when marked On Hold",
         )
     db.commit()
     return True
@@ -413,6 +476,55 @@ def reopen_job(job, username):
         job["job_status"],
         ACTIVE,
         "Job reopened",
+    )
+    db.commit()
+    return True
+
+
+def change_resale_status(job, new_status, username, note):
+    if new_status not in RESALE_STATUSES:
+        raise ValueError("Invalid resale status")
+    if job["resale_status"] == new_status:
+        return False
+
+    now = utcnow()
+    requested_at = job["resale_requested_at"]
+    requested_by = job["resale_requested_by"]
+    provided_at = job["resale_provided_at"]
+    provided_by = job["resale_provided_by"]
+
+    if new_status == RESALE_REQUESTED:
+        requested_at = now
+        requested_by = username
+        provided_at = None
+        provided_by = None
+    elif new_status == RESALE_PROVIDED:
+        provided_at = now
+        provided_by = username
+    elif new_status == RESALE_NOT_NEEDED:
+        requested_at = None
+        requested_by = None
+        provided_at = None
+        provided_by = None
+
+    db = get_db()
+    db.execute(
+        """
+        UPDATE jobs
+        SET resale_status = ?, resale_requested_at = ?, resale_requested_by = ?,
+            resale_provided_at = ?, resale_provided_by = ?, updated_at = ?, updated_by = ?
+        WHERE id = ?
+        """,
+        (new_status, requested_at, requested_by, provided_at, provided_by, now, username, job["id"]),
+    )
+    audit(
+        job["id"],
+        job["order_number"],
+        username,
+        "resale_status",
+        job["resale_status"],
+        new_status,
+        note,
     )
     db.commit()
     return True

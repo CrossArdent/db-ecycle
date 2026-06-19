@@ -8,9 +8,13 @@ from auth import (
     can_complete_job,
     can_create_job,
     can_delete_job,
+    can_cancel_resale,
     can_hold_job,
+    can_provide_resale,
     can_release_job,
     can_reopen_job,
+    can_reopen_resale,
+    can_request_resale,
     current_user,
     editable_fields_for,
     login_required,
@@ -22,14 +26,19 @@ from models import (
     COMPLETED,
     ON_HOLD,
     RELEASED,
+    RESALE_NOT_NEEDED,
+    RESALE_PROVIDED,
+    RESALE_REQUESTED,
     authenticate_user,
     change_release_status,
+    change_resale_status,
     create_job,
     delete_job,
     get_active_jobs,
     get_audit_entries,
     get_completed_jobs,
     get_job,
+    get_resale_needed_jobs,
     get_tv_jobs,
     mark_completed,
     parse_timestamp,
@@ -130,6 +139,15 @@ def completed_jobs():
     return render_template("completed_jobs.html", jobs=get_completed_jobs())
 
 
+@bp.route("/resale-needed")
+@login_required
+def resale_needed():
+    user = current_user()
+    if user["role"] == "Warehouse Display":
+        abort(403)
+    return render_template("resale_needed.html", jobs=get_resale_needed_jobs())
+
+
 @bp.route("/jobs/new", methods=["GET", "POST"])
 @non_display_required
 @require_csrf
@@ -143,6 +161,7 @@ def new_job():
             "customer_name": request.form.get("customer_name", ""),
             "date_received": request.form.get("date_received", ""),
             "release_status": request.form.get("release_status", RELEASED),
+            "resale_status": RESALE_NOT_NEEDED,
             "notes": request.form.get("notes", ""),
         }
         errors = validate_job_form(data)
@@ -162,6 +181,7 @@ def new_job():
             "customer_name": "",
             "date_received": date.today().isoformat(),
             "release_status": RELEASED,
+            "resale_status": RESALE_NOT_NEEDED,
             "notes": "",
         }
     return render_template("job_form.html", data=data, mode="new")
@@ -263,6 +283,26 @@ def job_action(job_id):
         delete_job(job, user["username"])
         flash(f"Job {job['order_number']} deleted.", "success")
         return redirect(url_for("main.active_jobs"))
+    elif action == "request_resale":
+        if not can_request_resale(user) or job["resale_status"] != RESALE_NOT_NEEDED:
+            abort(403)
+        change_resale_status(job, RESALE_REQUESTED, user["username"], "Resale numbers requested")
+        flash("Resale numbers requested.", "success")
+    elif action == "cancel_resale":
+        if not can_cancel_resale(user) or job["resale_status"] != RESALE_REQUESTED:
+            abort(403)
+        change_resale_status(job, RESALE_NOT_NEEDED, user["username"], "Resale request cancelled")
+        flash("Resale request cancelled.", "success")
+    elif action == "provide_resale":
+        if not can_provide_resale(user) or job["resale_status"] != RESALE_REQUESTED:
+            abort(403)
+        change_resale_status(job, RESALE_PROVIDED, user["username"], "Resale numbers provided")
+        flash("Resale numbers marked provided.", "success")
+    elif action == "reopen_resale":
+        if not can_reopen_resale(user) or job["resale_status"] != RESALE_PROVIDED:
+            abort(403)
+        change_resale_status(job, RESALE_REQUESTED, user["username"], "Resale request reopened")
+        flash("Resale request reopened.", "success")
     else:
         abort(400)
     return redirect(url_for("main.edit_job", job_id=job_id))
