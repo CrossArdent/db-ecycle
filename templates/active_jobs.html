@@ -30,70 +30,58 @@
     <a class="button muted" href="{{ url_for('main.active_jobs') }}">Reset</a>
 </form>
 
-<div class="active-job-list">
-    {% for job in jobs %}
-    {% set open_days = job|days_open %}
-    {% set hold_days = job|days_on_hold %}
-    {% set released_days = job|days_since_released %}
-    {% set resale_days = job|days_since_resale_requested %}
-    <article class="active-job-card">
-        <div class="active-job-main">
-            <div class="job-identity">
-                <a class="job-order" href="{{ url_for('main.edit_job', job_id=job.id) }}">Order #{{ job.order_number }}</a>
-                <div class="job-customer">{{ job.customer_name }}</div>
-                <div class="job-meta">Received {{ job.date_received }} - Updated {{ job.updated_at|short_dt }}</div>
-            </div>
-            <div class="job-statuses">
-                <span class="badge badge-{{ 'released' if job.release_status == 'Released' else 'on-hold' }}">{{ job.release_status }}</span>
-                <span class="badge badge-active">{{ job.job_status }}</span>
-                <span class="badge badge-resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span>
-            </div>
-        </div>
-
-        <div class="job-facts-grid">
-            <div class="job-fact">
-                <span class="fact-label">Days Open</span>
-                <span class="badge badge-{{ open_days|aging_level('days_open') }}">{{ open_days }} days</span>
-            </div>
-            <div class="job-fact">
-                <span class="fact-label">Days On Hold</span>
-                {% if hold_days is not none %}
-                <span class="badge badge-{{ hold_days|aging_level('days_on_hold') }}">{{ hold_days }} days</span>
-                {% else %}
-                <span class="muted">Not on hold</span>
-                {% endif %}
-            </div>
-            <div class="job-fact">
-                <span class="fact-label">Since Released</span>
-                {% if released_days is not none %}
-                <span class="badge badge-{{ released_days|aging_level('days_since_released') }}">{{ released_days }} days</span>
-                {% else %}
-                <span class="muted">Not recorded</span>
-                {% endif %}
-            </div>
-            <div class="job-fact">
-                <span class="fact-label">Since Resale Requested</span>
-                {% if resale_days is not none %}
-                <span class="badge badge-{{ resale_days|aging_level('days_since_resale_requested') }}">{{ resale_days }} days</span>
-                {% else %}
-                <span class="muted">Not requested</span>
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="job-card-footer">
-            <div class="job-notes">
-                <span class="fact-label">Notes</span>
-                <div>{{ job.notes or 'No notes' }}</div>
-            </div>
-            <div class="job-actions">
-                <span class="fact-label">Actions</span>
-                {% include "_job_actions.html" %}
-            </div>
-        </div>
-    </article>
-    {% else %}
-    <div class="empty-panel">No active jobs found.</div>
-    {% endfor %}
+<div class="active-table-wrap">
+    <table class="active-jobs-table">
+        <thead>
+            <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Received / Updated</th>
+                <th>Status</th>
+                <th>Aging</th>
+                <th>Notes</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            {% set open_days = job|days_open %}
+            {% set hold_days = job|days_on_hold %}
+            {% set released_days = job|days_since_released %}
+            {% set resale_days = job|days_since_resale_requested %}
+            <tr>
+                <td class="order-cell">
+                    <a class="job-order" href="{{ url_for('main.edit_job', job_id=job.id) }}">#{{ job.order_number }}</a>
+                </td>
+                <td class="customer-cell">{{ job.customer_name }}</td>
+                <td class="date-cell">
+                    <div><strong>Received:</strong> {{ job.date_received }}</div>
+                    <div class="muted"><strong>Updated:</strong> {{ job.updated_at|short_dt }}</div>
+                </td>
+                <td class="status-cell">
+                    <span class="badge badge-{{ 'released' if job.release_status == 'Released' else 'on-hold' }}">{{ job.release_status }}</span>
+                    <span class="badge badge-active">{{ job.job_status }}</span>
+                    <span class="badge badge-resale-{{ job.resale_status|lower|replace(' ', '-') }}">{{ job.resale_status }}</span>
+                </td>
+                <td class="aging-cell">
+                    <div><span class="mini-label">Open</span> <span class="badge badge-{{ open_days|aging_level('days_open') }}">{{ open_days }} days</span></div>
+                    {% if hold_days is not none %}
+                    <div><span class="mini-label">Hold</span> <span class="badge badge-{{ hold_days|aging_level('days_on_hold') }}">{{ hold_days }} days</span></div>
+                    {% endif %}
+                    {% if released_days is not none %}
+                    <div><span class="mini-label">Released</span> <span class="badge badge-{{ released_days|aging_level('days_since_released') }}">{{ released_days }} days</span></div>
+                    {% endif %}
+                    {% if resale_days is not none %}
+                    <div><span class="mini-label">Resale</span> <span class="badge badge-{{ resale_days|aging_level('days_since_resale_requested') }}">{{ resale_days }} days</span></div>
+                    {% endif %}
+                </td>
+                <td class="notes active-notes">{{ job.notes or 'No notes' }}</td>
+                <td class="actions-cell">{% include "_job_actions.html" %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="empty">No active jobs found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}
