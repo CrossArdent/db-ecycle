@@ -65,7 +65,7 @@ nav a {
 }
 
 .container {
-    width: min(1280px, calc(100vw - 32px));
+    width: min(1800px, calc(100vw - 16px));
     margin: 24px auto 48px;
 }
 
@@ -240,103 +240,6 @@ tr:last-child td {
     border-bottom: 0;
 }
 
-.active-table-wrap {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-}
-
-.active-jobs-table {
-    table-layout: fixed;
-}
-
-.active-jobs-table th,
-.active-jobs-table td {
-    overflow-wrap: anywhere;
-}
-
-.active-jobs-table th:nth-child(1) {
-    width: 11%;
-}
-
-.active-jobs-table th:nth-child(2) {
-    width: 16%;
-}
-
-.active-jobs-table th:nth-child(3) {
-    width: 16%;
-}
-
-.active-jobs-table th:nth-child(4) {
-    width: 17%;
-}
-
-.active-jobs-table th:nth-child(5) {
-    width: 15%;
-}
-
-.active-jobs-table th:nth-child(6) {
-    width: 13%;
-}
-
-.active-jobs-table th:nth-child(7) {
-    width: 12%;
-}
-
-.job-order {
-    font-size: 1rem;
-    font-weight: 800;
-    text-decoration: none;
-}
-
-.customer-cell {
-    font-weight: 700;
-}
-
-.date-cell,
-.aging-cell {
-    display: grid;
-    gap: 5px;
-}
-
-.status-cell,
-.actions-cell .action-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.status-cell {
-    align-items: flex-start;
-}
-
-.actions-cell .action-row {
-    align-items: center;
-}
-
-.actions-cell form {
-    max-width: 100%;
-}
-
-.actions-cell button.small {
-    white-space: normal;
-    text-align: center;
-    line-height: 1.15;
-}
-
-.mini-label {
-    display: inline-block;
-    min-width: 62px;
-    color: var(--muted);
-    font-size: .82rem;
-    font-weight: 700;
-}
-
-.active-notes {
-    min-width: 0;
-    max-width: none;
-}
-
 .notes {
     min-width: 180px;
     max-width: 340px;
@@ -480,37 +383,4 @@ dd {
         grid-template-columns: 1fr;
     }
 
-    .active-table-wrap {
-        border: 0;
-        background: transparent;
-    }
-
-    .active-jobs-table,
-    .active-jobs-table thead,
-    .active-jobs-table tbody,
-    .active-jobs-table tr,
-    .active-jobs-table th,
-    .active-jobs-table td {
-        display: block;
-    }
-
-    .active-jobs-table thead {
-        display: none;
-    }
-
-    .active-jobs-table tr {
-        margin-bottom: 12px;
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .active-jobs-table td {
-        border-bottom: 1px solid var(--line);
-    }
-
-    .active-jobs-table td:last-child {
-        border-bottom: 0;
-    }
 }
