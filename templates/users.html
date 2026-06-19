@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Users - Warehouse Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">
+    <div>
+        <h1>Users</h1>
+        <p>Named user accounts with role-based permissions.</p>
+    </div>
+    <a class="button" href="{{ url_for('main.new_user') }}">Create User</a>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.full_name }}</td>
+                <td>{{ user.email }}</td>
+                <td><span class="badge badge-neutral">{{ user.role }}</span></td>
+                <td>
+                    {% if user.active %}
+                    <span class="badge badge-completed">Active</span>
+                    {% else %}
+                    <span class="badge badge-urgent">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ user.last_login_at|short_dt }}</td>
+                <td>{{ user.updated_at|short_dt }}</td>
+                <td>
+                    <div class="action-row">
+                        <a class="button small" href="{{ url_for('main.edit_user', user_id=user.id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('main.set_user_active_route', user_id=user.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="active" value="{{ '0' if user.active else '1' }}">
+                            <button class="small secondary" type="submit">{{ 'Deactivate' if user.active else 'Activate' }}</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="empty">No users found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

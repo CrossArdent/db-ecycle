@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create User' if mode == 'new' else 'Edit User' }} - Warehouse Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">
+    <div>
+        <h1>{{ 'Create User' if mode == 'new' else 'Edit User' }}</h1>
+        <p>{% if mode == 'new' %}Add a named dashboard user.{% else %}Update profile, role, active status, or reset password.{% endif %}</p>
+    </div>
+    <a class="button muted" href="{{ url_for('main.users') }}">Back to Users</a>
+</div>
+
+<section class="detail-grid">
+    <div>
+        <form method="post" class="stacked-form wide">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+                Username
+                <input name="username" value="{{ data.username }}" {% if mode == 'edit' %}disabled{% endif %} required>
+            </label>
+            <label>
+                Full Name
+                <input name="full_name" value="{{ data.full_name }}" required>
+            </label>
+            <label>
+                Email
+                <input name="email" type="email" value="{{ data.email }}">
+            </label>
+            <label>
+                Role
+                <select name="role" required>
+                    {% for role in roles %}
+                    <option value="{{ role }}" {% if data.role == role %}selected{% endif %}>{{ role }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>
+                Status
+                <select name="active">
+                    <option value="1" {% if data.active %}selected{% endif %}>Active</option>
+                    <option value="0" {% if not data.active %}selected{% endif %}>Inactive</option>
+                </select>
+            </label>
+            {% if mode == 'new' %}
+            <label>
+                Password
+                <input name="password" type="password" autocomplete="new-password" required>
+            </label>
+            {% endif %}
+            <div class="form-actions">
+                <button type="submit">{{ 'Create User' if mode == 'new' else 'Save User' }}</button>
+                <a class="button muted" href="{{ url_for('main.users') }}">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    {% if mode == 'edit' %}
+    <aside class="facts">
+        <h2>Reset Password</h2>
+        <form method="post" action="{{ url_for('main.reset_user_password', user_id=user_row.id) }}" class="stacked-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+                New Temporary Password
+                <input name="password" type="password" autocomplete="new-password" required>
+            </label>
+            <button type="submit">Reset Password</button>
+        </form>
+
+        <dl>
+            <dt>Created</dt>
+            <dd>{{ user_row.created_at|short_dt }}</dd>
+            <dt>Last Login</dt>
+            <dd>{{ user_row.last_login_at|short_dt or 'Never' }}</dd>
+        </dl>
+    </aside>
+    {% endif %}
+</section>
+{% endblock %}

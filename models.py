@@ -9,6 +9,7 @@ ROLE_ADMIN = "Admin"
 ROLE_ACCOUNT = "Account Manager"
 ROLE_WAREHOUSE = "Warehouse Manager"
 ROLE_DISPLAY = "Warehouse Display"
+ROLES = [ROLE_ADMIN, ROLE_ACCOUNT, ROLE_WAREHOUSE, ROLE_DISPLAY]
 
 RELEASED = "Released"
 ON_HOLD = "On Hold"
@@ -23,10 +24,34 @@ JOB_STATUSES = {ACTIVE, COMPLETED}
 RESALE_STATUSES = {RESALE_NOT_NEEDED, RESALE_REQUESTED, RESALE_PROVIDED}
 
 DEFAULT_USERS = [
-    ("admin", "P@55w0rd", ROLE_ADMIN),
-    ("account", "Brett", ROLE_ACCOUNT),
-    ("warehouse", "Scott", ROLE_WAREHOUSE),
-    ("display", "display", ROLE_DISPLAY),
+    {
+        "username": "andy.admin",
+        "full_name": "Andy Admin",
+        "email": "",
+        "role": ROLE_ADMIN,
+        "password": "change-me-admin",
+    },
+    {
+        "username": "account.demo",
+        "full_name": "Demo Account Manager",
+        "email": "",
+        "role": ROLE_ACCOUNT,
+        "password": "change-me-account",
+    },
+    {
+        "username": "warehouse.manager",
+        "full_name": "Warehouse Manager",
+        "email": "",
+        "role": ROLE_WAREHOUSE,
+        "password": "change-me-warehouse",
+    },
+    {
+        "username": "warehouse.tv",
+        "full_name": "Warehouse TV Display",
+        "email": "",
+        "role": ROLE_DISPLAY,
+        "password": "change-me-display",
+    },
 ]
 
 
@@ -61,9 +86,14 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
+            full_name TEXT,
+            email TEXT,
+            active INTEGER NOT NULL DEFAULT 1,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            last_login_at TEXT
         );
 
         CREATE TABLE IF NOT EXISTS jobs (
@@ -108,8 +138,29 @@ def init_db():
         );
         """
     )
+    ensure_user_schema(db)
     ensure_job_schema(db)
     db.commit()
+
+
+def ensure_user_schema(db):
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(users)").fetchall()}
+    schema_updates = {
+        "full_name": "ALTER TABLE users ADD COLUMN full_name TEXT",
+        "email": "ALTER TABLE users ADD COLUMN email TEXT",
+        "active": "ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
+        "updated_at": "ALTER TABLE users ADD COLUMN updated_at TEXT",
+        "last_login_at": "ALTER TABLE users ADD COLUMN last_login_at TEXT",
+    }
+    for column, statement in schema_updates.items():
+        if column not in columns:
+            db.execute(statement)
+
+    now = utcnow()
+    db.execute("UPDATE users SET full_name = username WHERE full_name IS NULL OR TRIM(full_name) = ''")
+    db.execute("UPDATE users SET email = '' WHERE email IS NULL")
+    db.execute("UPDATE users SET active = 1 WHERE active IS NULL")
+    db.execute("UPDATE users SET updated_at = COALESCE(created_at, ?) WHERE updated_at IS NULL", (now,))
 
 
 def ensure_job_schema(db):
@@ -128,26 +179,63 @@ def ensure_job_schema(db):
             db.execute(statement)
 
 
-def create_user(username, password, role):
-    if role not in {ROLE_ADMIN, ROLE_ACCOUNT, ROLE_WAREHOUSE, ROLE_DISPLAY}:
+def display_name_for_user(user):
+    if not user:
+        return ""
+    return user["full_name"] or user["username"]
+
+
+def create_user(username, password, role, full_name=None, email="", active=True):
+    username = username.strip()
+    full_name = (full_name or username).strip()
+    email = (email or "").strip()
+    if role not in ROLES:
         raise ValueError("Invalid role")
+    if not username:
+        raise ValueError("Username is required")
+    if not full_name:
+        raise ValueError("Full name is required")
+    if not password:
+        raise ValueError("Password is required")
+    now = utcnow()
     db = get_db()
     db.execute(
         """
-        INSERT INTO users (username, password_hash, role, created_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO users (username, full_name, email, active, password_hash, role, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(username) DO UPDATE SET
+            full_name = excluded.full_name,
+            email = excluded.email,
+            active = excluded.active,
             password_hash = excluded.password_hash,
-            role = excluded.role
+            role = excluded.role,
+            updated_at = excluded.updated_at
         """,
-        (username, generate_password_hash(password), role, utcnow()),
+        (username, full_name, email, 1 if active else 0, generate_password_hash(password), role, now, now),
     )
     db.commit()
 
 
 def seed_default_users():
-    for username, password, role in DEFAULT_USERS:
-        create_user(username, password, role)
+    for user in DEFAULT_USERS:
+        create_user(
+            user["username"],
+            user["password"],
+            user["role"],
+            user["full_name"],
+            user.get("email", ""),
+            True,
+        )
+
+
+def list_users():
+    return get_db().execute(
+        """
+        SELECT id, username, full_name, email, role, active, created_at, updated_at, last_login_at
+        FROM users
+        ORDER BY active DESC, role ASC, full_name ASC, username ASC
+        """
+    ).fetchall()
 
 
 def get_user_by_username(username):
@@ -166,9 +254,50 @@ def get_user_by_id(user_id):
 
 def authenticate_user(username, password):
     user = get_user_by_username(username)
-    if user and check_password_hash(user["password_hash"], password):
+    if user and user["active"] and check_password_hash(user["password_hash"], password):
+        get_db().execute(
+            "UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?",
+            (utcnow(), utcnow(), user["id"]),
+        )
+        get_db().commit()
         return user
     return None
+
+
+def update_user(user_id, full_name, email, role, active):
+    full_name = (full_name or "").strip()
+    email = (email or "").strip()
+    if not full_name:
+        raise ValueError("Full name is required")
+    if role not in ROLES:
+        raise ValueError("Invalid role")
+    get_db().execute(
+        """
+        UPDATE users
+        SET full_name = ?, email = ?, role = ?, active = ?, updated_at = ?
+        WHERE id = ?
+        """,
+        (full_name, email, role, 1 if active else 0, utcnow(), user_id),
+    )
+    get_db().commit()
+
+
+def set_user_password(user_id, password):
+    if not password:
+        raise ValueError("Password is required")
+    get_db().execute(
+        "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+        (generate_password_hash(password), utcnow(), user_id),
+    )
+    get_db().commit()
+
+
+def set_user_active(user_id, active):
+    get_db().execute(
+        "UPDATE users SET active = ?, updated_at = ? WHERE id = ?",
+        (1 if active else 0, utcnow(), user_id),
+    )
+    get_db().commit()
 
 
 def audit(job_id, order_number, username, field_changed, old_value, new_value, note):

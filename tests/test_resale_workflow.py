@@ -12,7 +12,11 @@ from models import (
 from tests.conftest import create_job_via_form, login, logout, post_job_action
 
 
-PASSWORDS = {username: password for username, password, role in DEFAULT_USERS}
+PASSWORDS = {user["username"]: user["password"] for user in DEFAULT_USERS}
+ADMIN = "andy.admin"
+ACCOUNT = "account.demo"
+WAREHOUSE = "warehouse.manager"
+DISPLAY = "warehouse.tv"
 
 
 def job_by_order(order_number):
@@ -20,7 +24,7 @@ def job_by_order(order_number):
 
 
 def test_new_jobs_default_to_resale_not_needed(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-RESALE-DEFAULT")
 
     with app.app_context():
@@ -28,7 +32,7 @@ def test_new_jobs_default_to_resale_not_needed(app, client):
 
 
 def test_account_manager_can_request_and_cancel_resale_numbers(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-RESALE-CANCEL")
 
     with app.app_context():
@@ -40,7 +44,7 @@ def test_account_manager_can_request_and_cancel_resale_numbers(app, client):
     with app.app_context():
         job = get_job(job_id)
         assert job["resale_status"] == RESALE_REQUESTED
-        assert job["resale_requested_by"] == "account"
+        assert job["resale_requested_by"] == "Demo Account Manager"
 
     response = post_job_action(client, job_id, "cancel_resale")
     assert b"Resale request cancelled" in response.data
@@ -53,7 +57,7 @@ def test_account_manager_can_request_and_cancel_resale_numbers(app, client):
 
 
 def test_account_manager_cannot_provide_resale_numbers(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-RESALE-PROVIDE-BLOCK")
 
     with app.app_context():
@@ -68,7 +72,7 @@ def test_account_manager_cannot_provide_resale_numbers(app, client):
 
 
 def test_warehouse_manager_can_view_queue_and_provide_resale_numbers(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-RESALE-WH")
 
     with app.app_context():
@@ -85,18 +89,18 @@ def test_warehouse_manager_can_view_queue_and_provide_resale_numbers(app, client
     with app.app_context():
         job = get_job(job_id)
         assert job["resale_status"] == RESALE_PROVIDED
-        assert job["resale_provided_by"] == "warehouse"
+        assert job["resale_provided_by"] == "Warehouse Manager"
 
 
 def test_warehouse_display_cannot_access_resale_actions(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-RESALE-DISPLAY")
 
     with app.app_context():
         job_id = job_by_order("CL-RESALE-DISPLAY")["id"]
 
     logout(client)
-    login(client, "display", PASSWORDS["display"])
+    login(client, DISPLAY, PASSWORDS[DISPLAY])
     response = client.get("/resale-needed")
     assert response.status_code == 403
 
@@ -105,7 +109,7 @@ def test_warehouse_display_cannot_access_resale_actions(app, client):
 
 
 def test_resale_status_changes_do_not_affect_release_status(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-RESALE-HOLD", release_status=ON_HOLD)
 
     with app.app_context():
@@ -120,7 +124,7 @@ def test_resale_status_changes_do_not_affect_release_status(app, client):
 
 
 def test_release_status_changes_do_not_affect_resale_status(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-RELEASE-RESALE", release_status=ON_HOLD)
 
     with app.app_context():
@@ -136,7 +140,7 @@ def test_release_status_changes_do_not_affect_resale_status(app, client):
 
 
 def test_needs_resale_page_only_shows_active_requested_jobs(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-NEEDS-YES")
     create_job_via_form(client, "CL-NEEDS-NO")
     create_job_via_form(client, "CL-NEEDS-COMPLETED")
@@ -158,7 +162,7 @@ def test_needs_resale_page_only_shows_active_requested_jobs(app, client):
 
 
 def test_resale_request_details_do_not_appear_on_tv_display(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-TV-RESALE")
 
     with app.app_context():
@@ -172,7 +176,7 @@ def test_resale_request_details_do_not_appear_on_tv_display(app, client):
 
 
 def test_resale_status_changes_are_audited(app, client):
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     create_job_via_form(client, "CL-RESALE-AUDIT")
 
     with app.app_context():

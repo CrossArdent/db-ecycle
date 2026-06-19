@@ -307,6 +307,7 @@ tr:last-child td {
 }
 
 .badge.neutral,
+.badge-neutral,
 .badge-active {
     background: var(--neutral-bg);
     color: var(--neutral-text);

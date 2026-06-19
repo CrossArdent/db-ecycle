@@ -2,7 +2,11 @@ from models import DEFAULT_USERS, ON_HOLD, RELEASED, get_db, get_job
 from tests.conftest import create_job_via_form, login, logout, post_job_action
 
 
-PASSWORDS = {username: password for username, password, role in DEFAULT_USERS}
+PASSWORDS = {user["username"]: user["password"] for user in DEFAULT_USERS}
+ADMIN = "andy.admin"
+ACCOUNT = "account.demo"
+WAREHOUSE = "warehouse.manager"
+DISPLAY = "warehouse.tv"
 
 
 def job_by_order(order_number):
@@ -11,10 +15,10 @@ def job_by_order(order_number):
 
 def test_all_default_users_can_log_in(client):
     users = [
-        ("admin", PASSWORDS["admin"], b"Active Jobs"),
-        ("account", PASSWORDS["account"], b"Active Jobs"),
-        ("warehouse", PASSWORDS["warehouse"], b"Active Jobs"),
-        ("display", PASSWORDS["display"], b"Warehouse Orders"),
+        (ADMIN, PASSWORDS[ADMIN], b"Active Jobs"),
+        (ACCOUNT, PASSWORDS[ACCOUNT], b"Active Jobs"),
+        (WAREHOUSE, PASSWORDS[WAREHOUSE], b"Active Jobs"),
+        (DISPLAY, PASSWORDS[DISPLAY], b"Warehouse Orders"),
     ]
     for username, password, expected in users:
         response = login(client, username, password)
@@ -24,7 +28,7 @@ def test_all_default_users_can_log_in(client):
 
 
 def test_account_manager_can_create_job_with_defaults_and_duplicate_is_rejected(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
 
     response = create_job_via_form(client, "CL-DUP-1")
     assert response.status_code == 200
@@ -40,14 +44,14 @@ def test_account_manager_can_create_job_with_defaults_and_duplicate_is_rejected(
 
 
 def test_warehouse_manager_cannot_release_on_hold_job_server_side(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-HOLD-1", release_status=ON_HOLD)
     logout(client)
 
     with app.app_context():
         job_id = job_by_order("CL-HOLD-1")["id"]
 
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     response = post_job_action(client, job_id, "release")
     assert b"Warehouse Managers cannot release held jobs" in response.data
 
@@ -56,7 +60,7 @@ def test_warehouse_manager_cannot_release_on_hold_job_server_side(app, client):
 
 
 def test_account_manager_can_release_on_hold_job_and_missing_smtp_does_not_block(app, client):
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-REL-1", release_status=ON_HOLD)
 
     with app.app_context():
@@ -70,8 +74,8 @@ def test_account_manager_can_release_on_hold_job_and_missing_smtp_does_not_block
         job = get_job(job_id)
         assert job["release_status"] == RELEASED
         assert job["job_status"] == "Completed"
-        assert job["released_by"] == "account"
-        assert job["completed_by"] == "account"
+        assert job["released_by"] == "Demo Account Manager"
+        assert job["completed_by"] == "Demo Account Manager"
         audit_count = get_db().execute(
             "SELECT COUNT(*) FROM audit_log WHERE order_number = ? AND field_changed = ?",
             ("CL-REL-1", "release_status"),
@@ -85,7 +89,7 @@ def test_account_manager_can_release_on_hold_job_and_missing_smtp_does_not_block
 
 
 def test_warehouse_manager_can_complete_but_account_manager_cannot(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-COMPLETE-1")
 
     with app.app_context():
@@ -98,7 +102,7 @@ def test_warehouse_manager_can_complete_but_account_manager_cannot(app, client):
         assert get_job(warehouse_job_id)["job_status"] == "Completed"
 
     logout(client)
-    login(client, "account", PASSWORDS["account"])
+    login(client, ACCOUNT, PASSWORDS[ACCOUNT])
     create_job_via_form(client, "CL-COMPLETE-2")
 
     with app.app_context():
@@ -112,7 +116,7 @@ def test_warehouse_manager_can_complete_but_account_manager_cannot(app, client):
 
 
 def test_admin_can_reopen_completed_job(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-REOPEN-1")
 
     with app.app_context():
@@ -121,7 +125,7 @@ def test_admin_can_reopen_completed_job(app, client):
     post_job_action(client, job_id, "complete")
     logout(client)
 
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     response = post_job_action(client, job_id, "reopen")
     assert b"Job reopened" in response.data
 
@@ -132,7 +136,7 @@ def test_admin_can_reopen_completed_job(app, client):
 
 
 def test_marking_completed_job_on_hold_returns_it_to_active(app, client):
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     create_job_via_form(client, "CL-HOLD-REOPEN")
 
     with app.app_context():
@@ -156,7 +160,7 @@ def test_marking_completed_job_on_hold_returns_it_to_active(app, client):
 
 
 def test_admin_can_delete_job_and_audit_entry_remains(app, client):
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     create_job_via_form(client, "CL-DELETE-1")
 
     with app.app_context():
@@ -175,18 +179,18 @@ def test_admin_can_delete_job_and_audit_entry_remains(app, client):
             ("CL-DELETE-1", "job", "deleted"),
         ).fetchone()
         assert audit_entry is not None
-        assert audit_entry["username"] == "admin"
+        assert audit_entry["username"] == "Andy Admin"
 
 
 def test_non_admin_cannot_delete_job_server_side(app, client):
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     create_job_via_form(client, "CL-DELETE-BLOCKED")
 
     with app.app_context():
         job_id = job_by_order("CL-DELETE-BLOCKED")["id"]
 
     logout(client)
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     response = post_job_action(client, job_id, "delete")
     assert response.status_code == 403
 

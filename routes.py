@@ -36,14 +36,17 @@ from models import (
     COMPLETED,
     ON_HOLD,
     RELEASED,
+    ROLE_ACCOUNT,
     RESALE_NOT_NEEDED,
     RESALE_PROVIDED,
     RESALE_REQUESTED,
+    ROLES,
     authenticate_user,
     change_release_status,
     change_resale_status,
     create_job,
     delete_job,
+    display_name_for_user,
     get_active_jobs,
     get_audit_entries,
     get_attention_candidate_jobs,
@@ -51,9 +54,15 @@ from models import (
     get_job,
     get_resale_needed_jobs,
     get_tv_jobs,
+    get_user_by_id,
+    list_users,
     mark_completed,
     parse_timestamp,
     reopen_job,
+    set_user_active,
+    set_user_password,
+    update_user,
+    create_user,
     update_job_fields,
 )
 from notifications import send_release_email
@@ -204,6 +213,7 @@ def resale_needed():
 @require_csrf
 def new_job():
     user = current_user()
+    actor = display_name_for_user(user)
     if not can_create_job(user):
         abort(403)
     if request.method == "POST":
@@ -221,7 +231,7 @@ def new_job():
                 flash(error, "error")
         else:
             try:
-                job_id = create_job(data, user["username"])
+                job_id = create_job(data, actor)
                 flash("Job created.", "success")
                 return redirect(url_for("main.edit_job", job_id=job_id))
             except sqlite3.IntegrityError:
@@ -243,6 +253,7 @@ def new_job():
 @require_csrf
 def edit_job(job_id):
     user = current_user()
+    actor = display_name_for_user(user)
     job = get_job(job_id)
     if not job:
         abort(404)
@@ -262,24 +273,24 @@ def edit_job(job_id):
             try:
                 release_status = data.pop("release_status", None)
                 job_status = data.pop("job_status", None)
-                update_job_fields(job, data, user["username"], [field for field in fields if field not in {"release_status", "job_status"}])
+                update_job_fields(job, data, actor, [field for field in fields if field not in {"release_status", "job_status"}])
 
                 job = get_job(job_id)
                 completes_on_release = job["release_status"] == ON_HOLD and release_status == RELEASED
                 if release_status and release_status != job["release_status"]:
-                    changed = change_release_status(job, release_status, user["username"])
+                    changed = change_release_status(job, release_status, actor)
                     if changed and release_status == RELEASED:
                         released_job = get_job(job_id)
-                        sent, message = send_release_email(released_job, user["username"], released_job["released_at"])
+                        sent, message = send_release_email(released_job, actor, released_job["released_at"])
                         if not sent:
                             flash(message, "warning")
 
                 job = get_job(job_id)
                 if job_status and not completes_on_release and job_status != job["job_status"]:
                     if job_status == COMPLETED:
-                        mark_completed(job, user["username"])
+                        mark_completed(job, actor)
                     elif job_status == ACTIVE:
-                        reopen_job(job, user["username"])
+                        reopen_job(job, actor)
 
                 flash("Job updated.", "success")
                 return redirect(url_for("main.edit_job", job_id=job_id))
@@ -296,6 +307,7 @@ def edit_job(job_id):
 @require_csrf
 def job_action(job_id):
     user = current_user()
+    actor = display_name_for_user(user)
     job = get_job(job_id)
     if not job:
         abort(404)
@@ -304,16 +316,16 @@ def job_action(job_id):
     if action == "hold":
         if not can_hold_job(user):
             abort(403)
-        change_release_status(job, ON_HOLD, user["username"])
+        change_release_status(job, ON_HOLD, actor)
         flash("Job marked On Hold.", "success")
     elif action == "release":
         if not can_release_job(user):
             flash("Warehouse Managers cannot release held jobs. Ask an Admin or Account Manager to release this order.", "error")
             return redirect(url_for("main.edit_job", job_id=job_id))
-        changed = change_release_status(job, RELEASED, user["username"])
+        changed = change_release_status(job, RELEASED, actor)
         if changed:
             released_job = get_job(job_id)
-            sent, message = send_release_email(released_job, user["username"], released_job["released_at"])
+            sent, message = send_release_email(released_job, actor, released_job["released_at"])
             flash("Job released." if sent else f"Job released. {message}", "success" if sent else "warning")
         else:
             flash("Job is already released.", "success")
@@ -321,38 +333,38 @@ def job_action(job_id):
         if not can_complete_job(user):
             flash("Only Admins and Warehouse Managers can mark jobs completed.", "error")
             return redirect(url_for("main.edit_job", job_id=job_id))
-        mark_completed(job, user["username"])
+        mark_completed(job, actor)
         flash("Job marked completed.", "success")
     elif action == "reopen":
         if not can_reopen_job(user):
             abort(403)
-        reopen_job(job, user["username"])
+        reopen_job(job, actor)
         flash("Job reopened.", "success")
     elif action == "delete":
         if not can_delete_job(user):
             abort(403)
-        delete_job(job, user["username"])
+        delete_job(job, actor)
         flash(f"Job {job['order_number']} deleted.", "success")
         return redirect(url_for("main.active_jobs"))
     elif action == "request_resale":
         if not can_request_resale(user) or job["resale_status"] != RESALE_NOT_NEEDED:
             abort(403)
-        change_resale_status(job, RESALE_REQUESTED, user["username"], "Resale numbers requested")
+        change_resale_status(job, RESALE_REQUESTED, actor, "Resale numbers requested")
         flash("Resale numbers requested.", "success")
     elif action == "cancel_resale":
         if not can_cancel_resale(user) or job["resale_status"] != RESALE_REQUESTED:
             abort(403)
-        change_resale_status(job, RESALE_NOT_NEEDED, user["username"], "Resale request cancelled")
+        change_resale_status(job, RESALE_NOT_NEEDED, actor, "Resale request cancelled")
         flash("Resale request cancelled.", "success")
     elif action == "provide_resale":
         if not can_provide_resale(user) or job["resale_status"] != RESALE_REQUESTED:
             abort(403)
-        change_resale_status(job, RESALE_PROVIDED, user["username"], "Resale numbers provided")
+        change_resale_status(job, RESALE_PROVIDED, actor, "Resale numbers provided")
         flash("Resale numbers marked provided.", "success")
     elif action == "reopen_resale":
         if not can_reopen_resale(user) or job["resale_status"] != RESALE_PROVIDED:
             abort(403)
-        change_resale_status(job, RESALE_REQUESTED, user["username"], "Resale request reopened")
+        change_resale_status(job, RESALE_REQUESTED, actor, "Resale request reopened")
         flash("Resale request reopened.", "success")
     else:
         abort(400)
@@ -371,6 +383,97 @@ def tv():
 @admin_required
 def audit_log():
     return render_template("audit_log.html", entries=get_audit_entries())
+
+
+@bp.route("/users")
+@admin_required
+def users():
+    return render_template("users.html", users=list_users(), roles=ROLES)
+
+
+@bp.route("/users/new", methods=["GET", "POST"])
+@admin_required
+@require_csrf
+def new_user():
+    data = {
+        "username": request.form.get("username", "").strip(),
+        "full_name": request.form.get("full_name", "").strip(),
+        "email": request.form.get("email", "").strip(),
+        "role": request.form.get("role", ROLE_ACCOUNT),
+        "active": request.form.get("active", "1") == "1",
+    }
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        errors = validate_user_form(data, require_username=True, require_password=True, password=password)
+        if errors:
+            for error in errors:
+                flash(error, "error")
+        else:
+            try:
+                create_user(data["username"], password, data["role"], data["full_name"], data["email"], data["active"])
+                flash("User created.", "success")
+                return redirect(url_for("main.users"))
+            except sqlite3.IntegrityError:
+                flash("Username already exists.", "error")
+            except ValueError as exc:
+                flash(str(exc), "error")
+    return render_template("user_form.html", data=data, roles=ROLES, mode="new")
+
+
+@bp.route("/users/<int:user_id>/edit", methods=["GET", "POST"])
+@admin_required
+@require_csrf
+def edit_user(user_id):
+    user_row = get_user_by_id(user_id)
+    if not user_row:
+        abort(404)
+    data = {
+        "username": user_row["username"],
+        "full_name": request.form.get("full_name", user_row["full_name"] or "").strip(),
+        "email": request.form.get("email", user_row["email"] or "").strip(),
+        "role": request.form.get("role", user_row["role"]),
+        "active": request.form.get("active", "1" if user_row["active"] else "0") == "1",
+    }
+    if request.method == "POST":
+        errors = validate_user_form(data, require_username=False)
+        if errors:
+            for error in errors:
+                flash(error, "error")
+        else:
+            try:
+                update_user(user_id, data["full_name"], data["email"], data["role"], data["active"])
+                flash("User updated.", "success")
+                return redirect(url_for("main.users"))
+            except ValueError as exc:
+                flash(str(exc), "error")
+    return render_template("user_form.html", data=data, user_row=user_row, roles=ROLES, mode="edit")
+
+
+@bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
+@admin_required
+@require_csrf
+def reset_user_password(user_id):
+    if not get_user_by_id(user_id):
+        abort(404)
+    password = request.form.get("password", "")
+    try:
+        set_user_password(user_id, password)
+        flash("Password reset.", "success")
+    except ValueError as exc:
+        flash(str(exc), "error")
+    return redirect(url_for("main.edit_user", user_id=user_id))
+
+
+@bp.route("/users/<int:user_id>/set-active", methods=["POST"])
+@admin_required
+@require_csrf
+def set_user_active_route(user_id):
+    if not get_user_by_id(user_id):
+        abort(404)
+    active = request.form.get("active") == "1"
+    set_user_active(user_id, active)
+    flash("User activated." if active else "User deactivated.", "success")
+    return redirect(url_for("main.users"))
 
 
 def validate_job_form(data):
@@ -406,4 +509,17 @@ def validate_edit_form(data, fields):
         errors.append("Release Status is invalid.")
     if "job_status" in fields and data.get("job_status") not in {ACTIVE, COMPLETED}:
         errors.append("Job Status is invalid.")
+    return errors
+
+
+def validate_user_form(data, require_username, require_password=False, password=""):
+    errors = []
+    if require_username and not data.get("username"):
+        errors.append("Username is required.")
+    if not data.get("full_name"):
+        errors.append("Full name is required.")
+    if data.get("role") not in ROLES:
+        errors.append("Role is invalid.")
+    if require_password and not password:
+        errors.append("Password is required.")
     return errors

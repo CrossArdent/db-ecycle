@@ -33,20 +33,20 @@ python scripts/seed_users.py
 python scripts/seed_sample_jobs.py
 ```
 
-Default local test users are defined in `scripts/seed_users.py` and `models.py`:
+Default named local test users are defined in `scripts/seed_users.py` and `models.py`:
 
-- `admin / P@55w0rd`
-- `account / Brett`
-- `warehouse / Scott`
-- `display / display`
+- `andy.admin / change-me-admin` - Andy Admin - Admin
+- `account.demo / change-me-account` - Demo Account Manager - Account Manager
+- `warehouse.manager / change-me-warehouse` - Warehouse Manager - Warehouse Manager
+- `warehouse.tv / change-me-display` - Warehouse TV Display - Warehouse Display
 
-To change users or passwords, edit the default list in `models.py` or `scripts/seed_users.py`, then rerun:
+To reset the default users to these credentials, rerun:
 
 ```powershell
 python scripts/seed_users.py
 ```
 
-The seed command updates existing users with the configured password and role.
+The seed command is safe to run more than once. It updates the configured default users without duplicating them. Change these default passwords before real use.
 
 ## Run Locally
 
@@ -61,6 +61,7 @@ Default URLs:
 - Completed jobs: `http://127.0.0.1:5000/completed`
 - Warehouse TV display: `http://127.0.0.1:5000/tv`
 - Admin audit log: `http://127.0.0.1:5000/audit-log`
+- Admin users: `http://127.0.0.1:5000/users`
 
 For LAN use, run on the local interface and allow the port through the machine firewall:
 
@@ -120,7 +121,32 @@ When an On Hold job is released, the app attempts to email the warehouse manager
 
 Do not store real SMTP passwords in source control.
 
-## Roles
+## Named Users And Roles
+
+Users log in with an individual username and password. Permissions still come from the user's assigned role.
+
+User records include:
+
+- Username
+- Full name
+- Optional email
+- Role
+- Active/inactive status
+- Password hash
+- Created/updated timestamps
+- Last login timestamp
+
+Inactive users cannot log in. Users should normally be deactivated instead of deleted so audit history remains meaningful.
+
+Admins can manage users at:
+
+```text
+http://127.0.0.1:5000/users
+```
+
+Admins can create users, edit full name/email/role/status, deactivate or activate users, and reset passwords. Passwords are stored as hashes only; plaintext passwords are never stored. The app does not currently force a password change at next login.
+
+Roles:
 
 - Admin: create jobs, edit all job fields, hold, release, complete, reopen, delete jobs, view audit log.
 - Account Manager: create jobs, edit basic job info, hold, release, view jobs.

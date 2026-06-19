@@ -10,7 +10,11 @@ from models import DEFAULT_USERS, create_job, get_db, get_job, mark_completed
 from tests.conftest import login, logout, post_job_action
 
 
-PASSWORDS = {username: password for username, password, role in DEFAULT_USERS}
+PASSWORDS = {user["username"]: user["password"] for user in DEFAULT_USERS}
+ADMIN = "andy.admin"
+ACCOUNT = "account.demo"
+WAREHOUSE = "warehouse.manager"
+DISPLAY = "warehouse.tv"
 
 
 def create_direct_job(order_number, release_status="Released", resale_status="Not Needed", date_received=None):
@@ -28,7 +32,7 @@ def create_direct_job(order_number, release_status="Released", resale_status="No
 
 
 def test_needs_attention_page_visible_to_internal_roles(client):
-    for username in ["admin", "account", "warehouse"]:
+    for username in [ADMIN, ACCOUNT, WAREHOUSE]:
         response = login(client, username, PASSWORDS[username])
         assert response.status_code == 200
         response = client.get("/needs-attention")
@@ -38,7 +42,7 @@ def test_needs_attention_page_visible_to_internal_roles(client):
 
 
 def test_needs_attention_page_blocks_display(client):
-    login(client, "display", PASSWORDS["display"])
+    login(client, DISPLAY, PASSWORDS[DISPLAY])
     response = client.get("/needs-attention")
     assert response.status_code == 403
 
@@ -60,7 +64,7 @@ def test_on_hold_and_resale_requested_jobs_appear_once_with_multiple_reasons(app
         )
         get_db().commit()
 
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     response = client.get("/needs-attention")
     assert response.data.count(b"CL-ATTN-MULTI") == 1
     assert b"Waiting for Release" in response.data
@@ -75,7 +79,7 @@ def test_completed_jobs_do_not_appear_in_needs_attention(app, client):
         job_id = create_direct_job("CL-ATTN-COMPLETE", release_status="On Hold")
         mark_completed(get_job(job_id), "warehouse")
 
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     response = client.get("/needs-attention")
     assert b"CL-ATTN-COMPLETE" not in response.data
 
@@ -91,7 +95,7 @@ def test_released_too_long_appears_in_needs_attention(app, client):
         )
         get_db().commit()
 
-    login(client, "warehouse", PASSWORDS["warehouse"])
+    login(client, WAREHOUSE, PASSWORDS[WAREHOUSE])
     response = client.get("/needs-attention")
     assert b"CL-ATTN-RELEASED" in response.data
     assert b"Released, Not Completed" in response.data
@@ -137,7 +141,7 @@ def test_status_badges_render_on_internal_pages(app, client):
         )
         get_db().commit()
 
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     active = client.get("/jobs")
     completed = client.get("/completed")
     attention = client.get("/needs-attention")
@@ -156,7 +160,7 @@ def test_confirmation_prompts_exist_on_action_buttons(app, client):
         reopen_job_id = create_direct_job("CL-CONFIRM-REOPEN")
         mark_completed(get_job(reopen_job_id), "warehouse")
 
-    login(client, "admin", PASSWORDS["admin"])
+    login(client, ADMIN, PASSWORDS[ADMIN])
     response = client.get(f"/jobs/{job_id}/edit")
     expected_prompts = [
         b"Are you sure you want to release this job?",

@@ -15,6 +15,6 @@ DEFAULT_TEST_USERS = DEFAULT_USERS
 app = create_app()
 with app.app_context():
     seed_default_users()
-    print("Seeded users:")
-    for username, password, role in DEFAULT_TEST_USERS:
-        print(f"- {username} / {password} ({role})")
+print("Seeded users:")
+for user in DEFAULT_TEST_USERS:
+    print(f"- {user['username']} / {user['password']} ({user['full_name']} - {user['role']})")

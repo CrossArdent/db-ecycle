@@ -12,7 +12,7 @@
         <a class="brand" href="{{ url_for('main.index') }}">Warehouse Orders</a>
         {% if current_user %}
         <div class="header-account">
-            <span class="user-pill">{{ current_user.username }} - {{ current_user.role }}</span>
+            <span class="user-pill">{{ current_user.full_name or current_user.username }} - {{ current_user.role }}</span>
             <a class="logout-link" href="{{ url_for('main.logout') }}">Logout</a>
         </div>
         {% endif %}
@@ -31,6 +31,7 @@
             <a class="nav-button {{ 'active' if request.endpoint == 'main.tv' else '' }}" href="{{ url_for('main.tv') }}">TV Display</a>
             {% if current_user.role == 'Admin' %}
             <a class="nav-button {{ 'active' if request.endpoint == 'main.audit_log' else '' }}" href="{{ url_for('main.audit_log') }}">Audit Log</a>
+            <a class="nav-button {{ 'active' if request.endpoint in ['main.users', 'main.new_user', 'main.edit_user'] else '' }}" href="{{ url_for('main.users') }}">Users</a>
             {% endif %}
         </div>
     </nav>
