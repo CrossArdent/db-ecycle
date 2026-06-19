@@ -93,7 +93,7 @@ docker compose exec warehouse-dashboard python scripts/migrate_db.py
 docker compose logs --tail=50 warehouse-dashboard
 ```
 
-The compose file mounts `./instance` into the container, so the SQLite database remains on the mini PC across image rebuilds.
+The compose file publishes the dashboard on port 80 and mounts `./instance` into the container, so the SQLite database remains on the mini PC across image rebuilds.
 
 ## SMTP Email Notification
 
