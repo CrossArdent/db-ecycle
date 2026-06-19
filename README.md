@@ -95,6 +95,14 @@ docker compose logs --tail=50 warehouse-dashboard
 
 The compose file publishes the dashboard on port 80 and mounts `./instance` into the container, so the SQLite database remains on the mini PC across image rebuilds.
 
+To reset the local users to the credentials documented above, run:
+
+```bash
+docker compose exec warehouse-dashboard python scripts/seed_users.py
+```
+
+This updates the password hashes for the default users without storing plaintext passwords in SQLite.
+
 ## SMTP Email Notification
 
 Set these in `.env` or as environment variables:
