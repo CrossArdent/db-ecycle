@@ -70,6 +70,31 @@ python app.py
 
 `app.py` binds to `0.0.0.0:5000` when run directly. Other PCs on the same LAN can browse to `http://YOUR_SERVER_IP:5000/login`.
 
+## Docker Deployment
+
+For an Ubuntu server deployment in `/opt/warehouse-dashboard`:
+
+```bash
+cd /opt/warehouse-dashboard
+cp .env.example .env
+mkdir -p instance
+docker compose up -d --build
+docker compose exec warehouse-dashboard python scripts/migrate_db.py
+```
+
+To update an existing Docker deployment:
+
+```bash
+cd /opt/warehouse-dashboard
+cp instance/warehouse_dashboard.sqlite3 instance/warehouse_dashboard_$(date +%Y%m%d_%H%M%S).sqlite3
+git pull origin main
+docker compose up -d --build
+docker compose exec warehouse-dashboard python scripts/migrate_db.py
+docker compose logs --tail=50 warehouse-dashboard
+```
+
+The compose file mounts `./instance` into the container, so the SQLite database remains on the mini PC across image rebuilds.
+
 ## SMTP Email Notification
 
 Set these in `.env` or as environment variables:
